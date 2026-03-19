@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,37 +24,116 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.EventDummy
+import com.example.praktam_2417051056.ui.tasklist.TaskListScreen
 import com.example.praktam_2417051056.ui.theme.PrakTAM_2417051056Theme
 
+enum class AppTab { SCHEDULE, TASKS }
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PrakTAM_2417051056Theme {
-                var selectedEvent by remember { mutableStateOf<Event?>(null) }
-
-                if (selectedEvent == null) {
-                    ScheduleScreen(
-                        events = EventDummy.eventList,
-                        onEventClick = { event -> selectedEvent = event }
-                    )
-                } else {
-                    DetailScreen(
-                        event = selectedEvent!!,
-                        onBack = { selectedEvent = null }
-                    )
-                }
+                AppRoot()
             }
+        }
+    }
+}
+
+@Composable
+fun AppRoot() {
+    var currentTab by remember { mutableStateOf(AppTab.SCHEDULE) }
+    var selectedEvent by remember { mutableStateOf<Event?>(null) }
+
+    if (selectedEvent != null) {
+        DetailScreen(
+            event = selectedEvent!!,
+            onBack = { selectedEvent = null }
+        )
+        return
+    }
+
+    Scaffold(
+        bottomBar = {
+            AppBottomNavBar(
+                currentTab = currentTab,
+                onTabSelected = { currentTab = it }  // ← STATE UPDATE
+            )
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (currentTab) {
+                AppTab.SCHEDULE -> ScheduleScreen(
+                    events = EventDummy.eventList,
+                    onEventClick = { event -> selectedEvent = event }
+                )
+                AppTab.TASKS -> TaskListScreen()
+            }
+        }
+    }
+}
+
+data class NavItem(
+    val tab: AppTab,
+    val label: String,
+    val icon: ImageVector,
+    val emoji: String
+)
+
+@Composable
+fun AppBottomNavBar(
+    currentTab: AppTab,
+    onTabSelected: (AppTab) -> Unit
+) {
+    val navItems = listOf(
+        NavItem(AppTab.SCHEDULE, "Schedule", Icons.Default.DateRange,  "🗓️"),
+        NavItem(AppTab.TASKS,    "Tasks",    Icons.Default.Done,        "✅")
+    )
+
+    NavigationBar(
+        containerColor = Color.White,
+        tonalElevation = 0.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = Color(0xFFE2E8F0),
+                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
+            )
+    ) {
+        navItems.forEach { item ->
+            val isSelected = currentTab == item.tab
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onTabSelected(item.tab) },
+                icon = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = item.emoji, fontSize = 20.sp)
+                    }
+                },
+                label = {
+                    Text(
+                        text = item.label,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFF4F46E5),
+                    selectedTextColor = Color(0xFF4F46E5),
+                    unselectedIconColor = Color(0xFF94A3B8),
+                    unselectedTextColor = Color(0xFF94A3B8),
+                    indicatorColor = Color(0xFFF1F5F9)
+                )
+            )
         }
     }
 }
@@ -68,7 +149,6 @@ fun ScheduleScreen(
             .fillMaxSize()
             .background(Color(0xFFF1F5F9))
     ) {
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -120,8 +200,8 @@ fun ScheduleScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     StatChip(label = "Total Jadwal", value = "${events.size}")
-                    StatChip(label = "Hari Ini", value = "${events.count { it.date == "2026-03-04" }}")
-                    StatChip(label = "Besok", value = "${events.count { it.date == "2026-03-05" }}")
+                    StatChip(label = "Hari Ini", value = "${events.count { it.date == "2026-03-17" }}")
+                    StatChip(label = "Besok", value = "${events.count { it.date == "2026-03-18" }}")
                 }
             }
         }
@@ -140,7 +220,7 @@ fun ScheduleScreen(
                 color = Color(0xFF1E293B)
             )
             Text(
-                text = "Mar 2026", // ntar dibikin otomatis
+                text = "Mar 2026",
                 fontSize = 13.sp,
                 color = Color(0xFF94A3B8)
             )
@@ -170,7 +250,6 @@ fun ScheduleScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     event: Event,
@@ -184,17 +263,13 @@ fun DetailScreen(
             .fillMaxSize()
             .background(Color(0xFFF1F5F9))
     ) {
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            eventColor,
-                            eventColor.copy(alpha = 0.7f)
-                        )
+                        colors = listOf(eventColor, eventColor.copy(alpha = 0.7f))
                     )
                 )
         ) {
@@ -204,7 +279,6 @@ fun DetailScreen(
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Visual asset sesuai kategori
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
@@ -213,12 +287,7 @@ fun DetailScreen(
                             .background(Color.White.copy(alpha = 0.25f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Komponen: Image — pakai painterResource untuk kategori
-                        // Dapat diganti dengan: Image(painter = painterResource(id = R.drawable.ic_kuliah), ...)
-                        Text(
-                            text = getCategoryEmoji(event.category),
-                            fontSize = 38.sp
-                        )
+                        Text(text = getCategoryEmoji(event.category), fontSize = 38.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
@@ -235,8 +304,6 @@ fun DetailScreen(
                     }
                 }
             }
-
-            // Tombol Back
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
@@ -266,35 +333,14 @@ fun DetailScreen(
                 color = Color(0xFF1E293B),
                 lineHeight = 28.sp
             )
-
             Spacer(modifier = Modifier.height(16.dp))
-
-            DetailInfoRow(
-                icon = "📅",
-                label = "Tanggal",
-                value = formatDate(event.date)
-            )
+            DetailInfoRow(icon = "📅", label = "Tanggal", value = formatDate(event.date))
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-
-            DetailInfoRow(
-                icon = "🕐",
-                label = "Waktu",
-                value = "${event.startTime} – ${event.endTime}"
-            )
+            DetailInfoRow(icon = "🕐", label = "Waktu", value = "${event.startTime} – ${event.endTime}")
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-
-            DetailInfoRow(
-                icon = "⏱️",
-                label = "Durasi",
-                value = formatDuration(event.durationMinutes)
-            )
+            DetailInfoRow(icon = "⏱️", label = "Durasi", value = formatDuration(event.durationMinutes))
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-
-            DetailInfoRow(
-                icon = getCategoryEmoji(event.category),
-                label = "Kategori",
-                value = event.category
-            )
+            DetailInfoRow(icon = getCategoryEmoji(event.category), label = "Kategori", value = event.category)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -332,37 +378,19 @@ fun DetailScreen(
         ) {
             OutlinedButton(
                 onClick = { /* TODO */ },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF4F46E5)
-                )
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4F46E5))
             ) {
-                Text(
-                    text = "✏️  Edit",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
+                Text(text = "✏️  Edit", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
-
             Button(
-                onClick = { onBack() /* TODO */ },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
+                onClick = { onBack() },
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFEF4444)
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
             ) {
-                Text(
-                    text = "🗑️  Hapus",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = Color.White
-                )
+                Text(text = "🗑️  Hapus", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
             }
         }
     }
@@ -390,7 +418,6 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                         shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                     )
             )
-
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -401,14 +428,8 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = getCategoryEmoji(event.category),
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = getCategoryEmoji(event.category), fontSize = 14.sp, modifier = Modifier.padding(end = 4.dp))
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = eventColor.copy(alpha = 0.12f)
@@ -422,15 +443,9 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                             )
                         }
                     }
-                    Text(
-                        text = formatDateShort(event.date),
-                        fontSize = 11.sp,
-                        color = Color(0xFF94A3B8)
-                    )
+                    Text(text = formatDateShort(event.date), fontSize = 11.sp, color = Color(0xFF94A3B8))
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Text(
                     text = event.title,
                     fontSize = 15.sp,
@@ -439,10 +454,8 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
                 if (event.description.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = event.description,
                         fontSize = 12.sp,
@@ -451,9 +464,7 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-
                 Spacer(modifier = Modifier.height(10.dp))
-
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -461,10 +472,7 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(eventColor)
+                            modifier = Modifier.size(6.dp).clip(CircleShape).background(eventColor)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
@@ -474,10 +482,7 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                             color = Color(0xFF475569)
                         )
                     }
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFF1F5F9)
-                    ) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF1F5F9)) {
                         Text(
                             text = formatDuration(event.durationMinutes),
                             fontSize = 11.sp,
@@ -500,18 +505,8 @@ fun DetailInfoRow(icon: String, label: String, value: String) {
     ) {
         Text(text = icon, fontSize = 18.sp, modifier = Modifier.width(32.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                color = Color(0xFF94A3B8),
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = value,
-                fontSize = 14.sp,
-                color = Color(0xFF1E293B),
-                fontWeight = FontWeight.SemiBold
-            )
+            Text(text = label, fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
+            Text(text = value, fontSize = 14.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -525,17 +520,8 @@ fun StatChip(label: String, value: String) {
             .background(Color.White.copy(alpha = 0.15f))
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        Text(
-            text = value,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.8f),
-            fontSize = 11.sp
-        )
+        Text(text = value, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text(text = label, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
     }
 }
 
@@ -548,17 +534,8 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
     ) {
         Text(text = "🗓️", fontSize = 56.sp)
         Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Belum ada jadwal",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF94A3B8)
-        )
-        Text(
-            text = "Tambahkan kegiatan pertama kamu!",
-            fontSize = 13.sp,
-            color = Color(0xFFCBD5E1)
-        )
+        Text(text = "Belum ada jadwal", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF94A3B8))
+        Text(text = "Tambahkan kegiatan pertama kamu!", fontSize = 13.sp, color = Color(0xFFCBD5E1))
     }
 }
 
@@ -601,31 +578,7 @@ fun formatDateShort(date: String): String {
 }
 
 fun formatDuration(minutes: Int): String = when {
-    minutes < 60  -> "$minutes menit"
-    minutes % 60 == 0 -> "${minutes / 60} jam"
-    else -> "${minutes / 60} jam ${minutes % 60} mnt"
+    minutes < 60       -> "$minutes menit"
+    minutes % 60 == 0  -> "${minutes / 60} jam"
+    else               -> "${minutes / 60} jam ${minutes % 60} mnt"
 }
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun ScheduleScreenPreview() {
-    PrakTAM_2417051056Theme {
-        ScheduleScreen(
-            events = EventDummy.eventList,
-            onEventClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun DetailScreenPreview() {
-    PrakTAM_2417051056Theme {
-        DetailScreen(
-            event = EventDummy.eventList.first(),
-            onBack = {}
-        )
-    }
-}
-
-
