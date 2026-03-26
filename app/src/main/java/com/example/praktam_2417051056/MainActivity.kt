@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.EventDummy
-import com.example.praktam_2417051056.ui.tasklist.TaskListScreen
+import com.example.praktam_2417051056.schedule.ScheduleScreen
+import com.example.praktam_2417051056.tasklist.TaskListScreen
 import com.example.praktam_2417051056.ui.theme.PrakTAM_2417051056Theme
 
 enum class AppTab { SCHEDULE, TASKS }
@@ -52,7 +53,6 @@ class MainActivity : ComponentActivity() {
 fun AppRoot() {
     var currentTab by remember { mutableStateOf(AppTab.SCHEDULE) }
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
-
     if (selectedEvent != null) {
         DetailScreen(
             event = selectedEvent!!,
@@ -113,7 +113,7 @@ fun AppBottomNavBar(
             val isSelected = currentTab == item.tab
             NavigationBarItem(
                 selected = isSelected,
-                onClick = { onTabSelected(item.tab) },
+                onClick = { onTabSelected(item.tab) },  // ← STATE UPDATE
                 icon = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = item.emoji, fontSize = 20.sp)
@@ -134,118 +134,6 @@ fun AppBottomNavBar(
                     indicatorColor = Color(0xFFF1F5F9)
                 )
             )
-        }
-    }
-}
-
-@Composable
-fun ScheduleScreen(
-    events: List<Event>,
-    onEventClick: (Event) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFFF1F5F9))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color(0xFF4F46E5), Color(0xFF7C3AED))
-                    )
-                )
-                .padding(horizontal = 20.dp, vertical = 28.dp)
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "App Icon",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            text = "DailyDo",
-                            color = Color.White,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "Daily Scheduler",
-                            color = Color.White.copy(alpha = 0.75f),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Normal
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    StatChip(label = "Total Jadwal", value = "${events.size}")
-                    StatChip(label = "Hari Ini", value = "${events.count { it.date == "2026-03-17" }}")
-                    StatChip(label = "Besok", value = "${events.count { it.date == "2026-03-18" }}")
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Jadwal Minggu Ini",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B)
-            )
-            Text(
-                text = "Mar 2026",
-                fontSize = 13.sp,
-                color = Color(0xFF94A3B8)
-            )
-        }
-
-        if (events.isEmpty()) {
-            EmptyStateView(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp)
-            )
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(events) { event ->
-                    EventCard(
-                        event = event,
-                        onClick = { onEventClick(event) }
-                    )
-                }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-            }
         }
     }
 }

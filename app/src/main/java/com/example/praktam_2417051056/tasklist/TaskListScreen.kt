@@ -1,4 +1,4 @@
-package com.example.praktam_2417051056.ui.tasklist
+package com.example.praktam_2417051056.tasklist
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
