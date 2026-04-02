@@ -15,7 +15,6 @@ val Indigo600 = Color(0xFF4F46E5)
 val Indigo700 = Color(0xFF4338CA)
 val Indigo900 = Color(0xFF312E81)
 
-// Secondary — Violet
 val Violet400 = Color(0xFFA78BFA)
 val Violet600 = Color(0xFF7C3AED)
 val Violet900 = Color(0xFF4C1D95)
