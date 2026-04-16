@@ -32,10 +32,12 @@ enum class TaskSort(val label: String) {
 @Composable
 fun TaskListScreen(
     modifier: Modifier = Modifier,
+    tasks: List<Task> = TaskDummy.taskList,
+    onTasksChanged: (List<Task>) -> Unit = {},
     onTaskClick: (Task) -> Unit = {},
     onAddTask: () -> Unit = {}
 ) {
-    var taskList by remember { mutableStateOf(TaskDummy.taskList) }
+    var taskList by remember(tasks) { mutableStateOf(tasks) }
     var activeFilter by remember { mutableStateOf(TaskFilter.SEMUA) }
     var activeSort by remember { mutableStateOf(TaskSort.PRIORITAS) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -267,10 +269,11 @@ fun TaskListScreen(
                             task = task,
                             onClick = { onTaskClick(task) },
                             onToggleDone = { toggled ->
-                                // ← STATE UPDATE: toggle isDone pada task
-                                taskList = taskList.map {
+                                val updated = taskList.map {
                                     if (it.id == toggled.id) it.copy(isDone = !it.isDone) else it
                                 }
+                                taskList = updated
+                                onTasksChanged(updated)
                             }
                         )
                     }
@@ -393,7 +396,7 @@ fun TaskCard(
                                 color = if (task.isDone) Color(0xFF4F46E5) else Color(0xFFCBD5E1),
                                 shape = CircleShape
                             )
-                            .clickable { onToggleDone(task) },  // ← STATE UPDATE trigger
+                            .clickable { onToggleDone(task) },
                         contentAlignment = Alignment.Center
                     ) {
                         if (task.isDone) {

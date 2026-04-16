@@ -51,6 +51,7 @@ val weekDays = listOf(
 fun ScheduleScreen(
     events: List<Event> = EventDummy.eventList,
     onEventClick: (Event) -> Unit = {},
+    onAddEvent: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedDate by remember { mutableStateOf("2026-03-11") }
@@ -173,7 +174,7 @@ fun ScheduleScreen(
                                     if (isSelected) Color.White
                                     else Color.White.copy(alpha = 0.15f)
                                 )
-                                .clickable { selectedDate = day.date }  // ← STATE UPDATE
+                                .clickable { selectedDate = day.date }
                                 .padding(horizontal = 14.dp, vertical = 10.dp)
                         ) {
                             Text(
@@ -232,7 +233,7 @@ fun ScheduleScreen(
             }
 
             Button(
-                onClick = { /* TODO: add event */ },
+                onClick = { onAddEvent() },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)

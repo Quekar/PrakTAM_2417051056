@@ -6,10 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,12 +23,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import com.example.praktam_2417051056.addevent.AddEventBottomSheet
+import com.example.praktam_2417051056.addtask.AddTaskScreen
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.EventDummy
+import com.example.praktam_2417051056.model.Task
+import com.example.praktam_2417051056.model.TaskDummy
 import com.example.praktam_2417051056.schedule.ScheduleScreen
 import com.example.praktam_2417051056.splash.SplashScreen
 import com.example.praktam_2417051056.tasklist.TaskListScreen
@@ -64,22 +64,68 @@ fun DailyDoApp() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot() {
     var currentTab by remember { mutableStateOf(AppTab.SCHEDULE) }
+
+    var eventList by remember { mutableStateOf(EventDummy.eventList) }
+    var taskList  by remember { mutableStateOf(TaskDummy.taskList) }
+
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
+
+    var showAddTask by remember { mutableStateOf(false) }
+
+    var showAddEvent by remember { mutableStateOf(false) }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val snackbarHostState = remember { SnackbarHostState() }
+
     if (selectedEvent != null) {
         DetailScreen(
-            event = selectedEvent!!,
+            event  = selectedEvent!!,
             onBack = { selectedEvent = null }
         )
         return
     }
 
+    if (showAddTask) {
+        AddTaskScreen(
+            onBack = { showAddTask = false },
+            onTaskSaved = { title, description, category, priority, deadline, createdAt ->
+                val newId = (taskList.maxOfOrNull { it.id } ?: 0) + 1
+                val newTask = Task(
+                    id          = newId,
+                    title       = title,
+                    description = description,
+                    category    = category,
+                    priority    = priority,
+                    deadline    = deadline,
+                    isDone      = false,
+                    createdAt   = createdAt
+                )
+                taskList = taskList + newTask
+                showAddTask = false
+            }
+        )
+        return
+    }
+
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData   = data,
+                    containerColor = Color(0xFF1E293B),
+                    contentColor   = Color.White,
+                    actionColor    = Color(0xFF818CF8),
+                    shape          = RoundedCornerShape(14.dp),
+                    modifier       = Modifier.padding(16.dp)
+                )
+            }
+        },
         bottomBar = {
             AppBottomNavBar(
-                currentTab = currentTab,
+                currentTab    = currentTab,
                 onTabSelected = { currentTab = it }
             )
         }
@@ -87,13 +133,59 @@ fun AppRoot() {
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentTab) {
                 AppTab.SCHEDULE -> ScheduleScreen(
-                    events = EventDummy.eventList,
-                    onEventClick = { event -> selectedEvent = event }
+                    events       = eventList,
+                    onEventClick = { event -> selectedEvent = event },
+                    onAddEvent   = { showAddEvent = true }
                 )
-                AppTab.TASKS -> TaskListScreen()
+                AppTab.TASKS -> TaskListScreen(
+                    tasks      = taskList,
+                    onTasksChanged = { updatedList -> taskList = updatedList },
+                    onAddTask  = { showAddTask = true }
+                )
             }
         }
     }
+
+    if (showAddEvent) {
+        ModalBottomSheet(
+            onDismissRequest  = { showAddEvent = false },
+            sheetState        = bottomSheetState,
+            containerColor    = Color.White,
+            dragHandle        = null,
+            shape             = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            AddEventBottomSheet(
+                snackbarHostState = snackbarHostState,
+                onDismiss         = { showAddEvent = false },
+                onEventSaved      = { title, date, startTime, endTime, category, color, description ->
+                    val durationMinutes = computeDurationMinutes(startTime, endTime)
+                    val newId = (eventList.maxOfOrNull { it.id } ?: 0) + 1
+                    val newEvent = Event(
+                        id              = newId,
+                        title           = title,
+                        description     = description,
+                        date            = date,
+                        startTime       = startTime,
+                        endTime         = endTime,
+                        durationMinutes = durationMinutes,
+                        category        = category,
+                        color           = color
+                    )
+                    eventList     = eventList + newEvent
+                    showAddEvent  = false
+                }
+            )
+        }
+    }
+}
+
+private fun computeDurationMinutes(start: String, end: String): Int {
+    return try {
+        val (sh, sm) = start.split(":").map { it.toInt() }
+        val (eh, em) = end.split(":").map { it.toInt() }
+        val diff = (eh * 60 + em) - (sh * 60 + sm)
+        diff.coerceAtLeast(0)
+    } catch (e: Exception) { 0 }
 }
 
 data class NavItem(
@@ -177,14 +269,14 @@ fun DetailScreen(
                 )
         ) {
             Box(
-                modifier        = Modifier
+                modifier         = Modifier
                     .fillMaxSize()
                     .padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
-                        modifier        = Modifier
+                        modifier         = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.25f)),
@@ -280,7 +372,7 @@ fun DetailScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
-                onClick  = { /* TODO */ },
+                onClick  = { /* TODO: Edit Event */ },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4F46E5))
@@ -316,7 +408,7 @@ fun DetailInfoRow(icon: String, label: String, value: String) {
 @Composable
 fun EmptyStateView(modifier: Modifier = Modifier) {
     Column(
-        modifier                = modifier,
+        modifier               = modifier,
         verticalArrangement    = Arrangement.Center,
         horizontalAlignment    = Alignment.CenterHorizontally
     ) {
