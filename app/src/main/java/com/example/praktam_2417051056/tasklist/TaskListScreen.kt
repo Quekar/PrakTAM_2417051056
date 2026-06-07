@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
+import com.example.praktam_2417051056.getCategoryIcon
 import com.example.praktam_2417051056.model.Task
 import com.example.praktam_2417051056.model.TaskDummy
 
@@ -105,7 +106,7 @@ fun TaskListScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Star,
+                                imageVector = Icons.Default.CheckCircle,
                                 contentDescription = "Task Icon",
                                 tint = Color.White,
                                 modifier = Modifier.size(26.dp)
@@ -301,12 +302,7 @@ fun TaskCard(
         2    -> "Sedang"
         else -> "Rendah"
     }
-    val categoryEmoji = when (task.category) {
-        "Kuliah"  -> "📚"
-        "Pribadi" -> "🏃"
-        "Kerja"   -> "💼"
-        else      -> "📌"
-    }
+    val categoryIcon = getCategoryIcon(task.category)
 
     Card(
         modifier = modifier
@@ -344,7 +340,20 @@ fun TaskCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = categoryEmoji, fontSize = 13.sp)
+                        Box(
+                            modifier         = Modifier
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFF1F5F9)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector        = categoryIcon,
+                                contentDescription = task.category,
+                                tint               = Color(0xFF64748B),
+                                modifier           = Modifier.size(13.dp)
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = Color(0xFFF1F5F9)
@@ -439,9 +448,13 @@ fun TaskCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = if (isOverdue(task) && !task.isDone) "⚠️" else "🕐",
-                            fontSize = 12.sp
+                        Icon(
+                            imageVector = if (isOverdue(task) && !task.isDone)
+                                Icons.Default.Warning else Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = if (isOverdue(task) && !task.isDone)
+                                Color(0xFFEF4444) else Color(0xFF94A3B8),
+                            modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -455,13 +468,24 @@ fun TaskCard(
                             shape = RoundedCornerShape(8.dp),
                             color = Color(0xFF22C55E).copy(alpha = 0.1f)
                         ) {
-                            Text(
-                                text = "✅ Selesai",
-                                fontSize = 11.sp,
-                                color = Color(0xFF22C55E),
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                            Row(
+                                modifier              = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.CheckCircle,
+                                    contentDescription = "Selesai",
+                                    tint               = Color(0xFF22C55E),
+                                    modifier           = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text       = "Selesai",
+                                    fontSize   = 11.sp,
+                                    color      = Color(0xFF22C55E),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -472,10 +496,10 @@ fun TaskCard(
 
 @Composable
 fun TaskEmptyState(filter: TaskFilter, modifier: Modifier = Modifier) {
-    val (emoji, title, subtitle) = when (filter) {
-        TaskFilter.SEMUA   -> Triple("📋", "Belum ada task", "Tambahkan tugas pertama kamu!")
-        TaskFilter.AKTIF   -> Triple("🎉", "Semua selesai!", "Kamu sudah menyelesaikan semua tugas.")
-        TaskFilter.SELESAI -> Triple("⏳", "Belum ada task selesai", "Selesaikan tugas aktif kamu dulu.")
+    val (icon, title, subtitle) = when (filter) {
+        TaskFilter.SEMUA   -> Triple(Icons.Default.Assignment,    "Belum ada task",         "Tambahkan tugas pertama kamu!")
+        TaskFilter.AKTIF   -> Triple(Icons.Default.EmojiEvents,   "Semua selesai!",          "Kamu sudah menyelesaikan semua tugas.")
+        TaskFilter.SELESAI -> Triple(Icons.Default.HourglassEmpty,"Belum ada task selesai",  "Selesaikan tugas aktif kamu dulu.")
     }
 
     Column(
@@ -483,7 +507,20 @@ fun TaskEmptyState(filter: TaskFilter, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = emoji, fontSize = 64.sp)
+        Box(
+            modifier         = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEEF2FF)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = title,
+                tint               = Color(0xFF4F46E5),
+                modifier           = Modifier.size(40.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = title,

@@ -1,5 +1,6 @@
 package com.example.praktam_2417051056.schedule
 
+import androidx.core.graphics.toColorInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,13 +8,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import com.example.praktam_2417051056.getCategoryIcon
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.EventDummy
 
@@ -288,7 +290,8 @@ fun ScheduleScreen(
 
 @Composable
 fun EventCard(event: Event, onClick: () -> Unit) {
-    val eventColor = parseColorSchedule(event.color)
+    val eventColor   = parseColorSchedule(event.color)
+    val categoryIcon = getCategoryIcon(event.category)
 
     Card(
         modifier = Modifier
@@ -326,10 +329,20 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = getCategoryEmojiSchedule(event.category),
-                            fontSize = 14.sp
-                        )
+                        Box(
+                            modifier         = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(eventColor.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector        = categoryIcon,
+                                contentDescription = event.category,
+                                tint               = eventColor,
+                                modifier           = Modifier.size(15.dp)
+                            )
+                        }
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = eventColor.copy(alpha = 0.12f)
@@ -411,7 +424,20 @@ fun ScheduleEmptyState(date: String, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "🗓️", fontSize = 64.sp)
+        Box(
+            modifier         = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEEF2FF)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = Icons.Default.CalendarMonth,
+                contentDescription = "Tidak ada kegiatan",
+                tint               = Color(0xFF4F46E5),
+                modifier           = Modifier.size(40.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Tidak ada kegiatan",
@@ -431,14 +457,6 @@ fun ScheduleEmptyState(date: String, modifier: Modifier = Modifier) {
 
 fun parseColorSchedule(hex: String): Color {
     return try { Color(hex.toColorInt()) } catch (e: Exception) { Color(0xFF4F46E5) }
-}
-
-fun getCategoryEmojiSchedule(category: String): String = when (category) {
-    "Kuliah"  -> "📚"
-    "Pribadi" -> "🏃"
-    "Kerja"   -> "💼"
-    "Penting" -> "🔴"
-    else      -> "📌"
 }
 
 fun formatDurationSchedule(minutes: Int): String = when {

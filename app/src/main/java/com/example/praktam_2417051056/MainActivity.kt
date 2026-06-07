@@ -11,9 +11,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,10 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.example.praktam_2417051056.addevent.AddEventBottomSheet
 import com.example.praktam_2417051056.addtask.AddTaskScreen
 import com.example.praktam_2417051056.model.Event
@@ -191,8 +204,7 @@ private fun computeDurationMinutes(start: String, end: String): Int {
 data class NavItem(
     val tab: AppTab,
     val label: String,
-    val icon: ImageVector,
-    val emoji: String
+    val icon: ImageVector
 )
 
 @Composable
@@ -201,8 +213,8 @@ fun AppBottomNavBar(
     onTabSelected: (AppTab) -> Unit
 ) {
     val navItems = listOf(
-        NavItem(AppTab.SCHEDULE, "Schedule", Icons.Default.DateRange, "🗓️"),
-        NavItem(AppTab.TASKS,    "Tasks",    Icons.Default.Done,      "✅")
+        NavItem(AppTab.SCHEDULE, "Schedule", Icons.Default.CalendarMonth),
+        NavItem(AppTab.TASKS,    "Tasks",    Icons.Default.CheckCircle)
     )
 
     NavigationBar(
@@ -222,9 +234,11 @@ fun AppBottomNavBar(
                 selected = isSelected,
                 onClick  = { onTabSelected(item.tab) },
                 icon = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = item.emoji, fontSize = 20.sp)
-                    }
+                    Icon(
+                        imageVector        = item.icon,
+                        contentDescription = item.label,
+                        modifier           = Modifier.size(24.dp)
+                    )
                 },
                 label = {
                     Text(
@@ -251,7 +265,9 @@ fun DetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val eventColor = parseColor(event.color)
+    val eventColor  = parseColor(event.color)
+    val imageUrl    = getCategoryImageUrl(event.category)
+    val categoryIcon = getCategoryIcon(event.category)
 
     Column(
         modifier = modifier
@@ -261,33 +277,86 @@ fun DetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(eventColor, eventColor.copy(alpha = 0.7f))
-                    )
-                )
+                .height(240.dp)
         ) {
+            SubcomposeAsyncImage(
+                model              = imageUrl,
+                contentDescription = event.category,
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier.fillMaxSize(),
+                loading = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(eventColor, eventColor.copy(alpha = 0.6f))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color    = Color.White,
+                            modifier = Modifier.size(36.dp),
+                            strokeWidth = 3.dp
+                        )
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(eventColor, eventColor.copy(alpha = 0.6f))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = categoryIcon,
+                            contentDescription = event.category,
+                            tint               = Color.White.copy(alpha = 0.6f),
+                            modifier           = Modifier.size(80.dp)
+                        )
+                    }
+                }
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                        )
+                    )
+            )
+
             Box(
                 modifier         = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier         = Modifier
-                            .size(80.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.25f)),
+                            .background(Color.White.copy(alpha = 0.22f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = getCategoryEmoji(event.category), fontSize = 38.sp)
+                        Icon(
+                            imageVector        = categoryIcon,
+                            contentDescription = event.category,
+                            tint               = Color.White,
+                            modifier           = Modifier.size(34.dp)
+                        )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = Color.White.copy(alpha = 0.25f)
+                        color = Color.White.copy(alpha = 0.22f)
                     ) {
                         Text(
                             text       = event.category,
@@ -305,7 +374,7 @@ fun DetailScreen(
                     .padding(12.dp)
                     .align(Alignment.TopStart)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .background(Color.Black.copy(alpha = 0.25f))
             ) {
                 Icon(
                     imageVector        = Icons.Default.ArrowBack,
@@ -329,13 +398,30 @@ fun DetailScreen(
                 lineHeight = 28.sp
             )
             Spacer(modifier = Modifier.height(16.dp))
-            DetailInfoRow(icon = "📅", label = "Tanggal", value = formatDate(event.date))
+
+            DetailInfoRow(
+                icon  = Icons.Default.DateRange,
+                label = "Tanggal",
+                value = formatDate(event.date)
+            )
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(icon = "🕐", label = "Waktu",   value = "${event.startTime} – ${event.endTime}")
+            DetailInfoRow(
+                icon  = Icons.Default.Schedule,
+                label = "Waktu",
+                value = "${event.startTime} – ${event.endTime}"
+            )
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(icon = "⏱️", label = "Durasi",  value = formatDuration(event.durationMinutes))
+            DetailInfoRow(
+                icon  = Icons.Default.Timer,
+                label = "Durasi",
+                value = formatDuration(event.durationMinutes)
+            )
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(icon = getCategoryEmoji(event.category), label = "Kategori", value = event.category)
+            DetailInfoRow(
+                icon  = categoryIcon,
+                label = "Kategori",
+                value = event.category
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -377,7 +463,13 @@ fun DetailScreen(
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4F46E5))
             ) {
-                Text(text = "✏️  Edit", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Icon(
+                    imageVector        = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    modifier           = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Edit", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             Button(
                 onClick  = { onBack() },
@@ -385,19 +477,41 @@ fun DetailScreen(
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
             ) {
-                Text(text = "🗑️  Hapus", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
+                Icon(
+                    imageVector        = Icons.Default.Delete,
+                    contentDescription = "Hapus",
+                    tint               = Color.White,
+                    modifier           = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Hapus", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.White)
             }
         }
     }
 }
 
+
 @Composable
-fun DetailInfoRow(icon: String, label: String, value: String) {
+fun DetailInfoRow(icon: ImageVector, label: String, value: String) {
     Row(
         modifier          = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = icon, fontSize = 18.sp, modifier = Modifier.width(32.dp))
+        Box(
+            modifier         = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFFF1F5F9)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = icon,
+                contentDescription = label,
+                tint               = Color(0xFF4F46E5),
+                modifier           = Modifier.size(17.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
             Text(text = value, fontSize = 14.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
@@ -412,7 +526,20 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
         verticalArrangement    = Arrangement.Center,
         horizontalAlignment    = Alignment.CenterHorizontally
     ) {
-        Text(text = "🗓️", fontSize = 56.sp)
+        Box(
+            modifier         = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEEF2FF)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector        = Icons.Default.CalendarMonth,
+                contentDescription = "Belum ada jadwal",
+                tint               = Color(0xFF4F46E5),
+                modifier           = Modifier.size(40.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = "Belum ada jadwal", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF94A3B8))
         Text(text = "Tambahkan kegiatan pertama kamu!", fontSize = 13.sp, color = Color(0xFFCBD5E1))
@@ -422,13 +549,15 @@ fun EmptyStateView(modifier: Modifier = Modifier) {
 fun parseColor(hex: String): Color =
     try { Color(hex.toColorInt()) } catch (e: Exception) { Color(0xFF4F46E5) }
 
-fun getCategoryEmoji(category: String): String = when (category) {
-    "Kuliah"  -> "📚"
-    "Pribadi" -> "🏃"
-    "Kerja"   -> "💼"
-    "Penting" -> "🔴"
-    else      -> "📌"
+
+fun getCategoryImageUrl(category: String): String = when (category) {
+    "Kuliah"  -> "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80"
+    "Pribadi" -> "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"
+    "Kerja"   -> "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80"
+    "Penting" -> "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80"
+    else      -> "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80"
 }
+
 
 fun formatDate(date: String): String {
     val parts = date.split("-")
