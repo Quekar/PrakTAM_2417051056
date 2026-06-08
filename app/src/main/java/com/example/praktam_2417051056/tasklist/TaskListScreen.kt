@@ -19,7 +19,6 @@ import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
 import com.example.praktam_2417051056.getCategoryIcon
 import com.example.praktam_2417051056.model.Task
-import com.example.praktam_2417051056.model.TaskDummy
 
 enum class TaskFilter { SEMUA, AKTIF, SELESAI }
 
@@ -33,7 +32,7 @@ enum class TaskSort(val label: String) {
 @Composable
 fun TaskListScreen(
     modifier: Modifier = Modifier,
-    tasks: List<Task> = TaskDummy.taskList,
+    tasks: List<Task> = emptyList(),
     onTasksChanged: (List<Task>) -> Unit = {},
     onTaskClick: (Task) -> Unit = {},
     onAddTask: () -> Unit = {}

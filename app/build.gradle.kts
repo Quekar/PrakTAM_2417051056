@@ -58,4 +58,6 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
 }

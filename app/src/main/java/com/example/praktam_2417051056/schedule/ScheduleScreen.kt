@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.example.praktam_2417051056.getCategoryIcon
 import com.example.praktam_2417051056.model.Event
-import com.example.praktam_2417051056.model.EventDummy
 
 data class DayItem(
     val date: String,       // Format: YYYY-MM-DD
@@ -51,7 +50,7 @@ val weekDays = listOf(
 
 @Composable
 fun ScheduleScreen(
-    events: List<Event> = EventDummy.eventList,
+    events: List<Event> = emptyList(),
     onEventClick: (Event) -> Unit = {},
     onAddEvent: () -> Unit = {},
     modifier: Modifier = Modifier
