@@ -11,19 +11,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Work
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,20 +30,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import coil.compose.AsyncImage
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
 import com.example.praktam_2417051056.addevent.AddEventBottomSheet
 import com.example.praktam_2417051056.addtask.AddTaskScreen
 import com.example.praktam_2417051056.model.Event
-import com.example.praktam_2417051056.model.Task
-import com.example.praktam_2417051056.network.RetrofitClient
 import com.example.praktam_2417051056.schedule.ScheduleScreen
 import com.example.praktam_2417051056.splash.SplashScreen
 import com.example.praktam_2417051056.tasklist.TaskListScreen
 import com.example.praktam_2417051056.ui.theme.PrakTAM_2417051056Theme
+import com.example.praktam_2417051056.viewmodel.AppViewModel
+import com.example.praktam_2417051056.viewmodel.UiState
 
 enum class Screen { SPLASH, MAIN }
 enum class AppTab { SCHEDULE, TASKS }
@@ -78,52 +75,19 @@ fun DailyDoApp() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppRoot() {
-    var currentTab by remember { mutableStateOf(AppTab.SCHEDULE) }
+fun AppRoot(
+    viewModel: AppViewModel = viewModel()
+) {
+    val eventState by viewModel.eventState.collectAsState()
+    val taskState  by viewModel.taskState.collectAsState()
 
-    var eventList by remember { mutableStateOf<List<Event>>(emptyList()) }
-    var taskList  by remember { mutableStateOf<List<Task>>(emptyList()) }
-
-    var isLoadingEvents by remember { mutableStateOf(true) }
-    var isLoadingTasks  by remember { mutableStateOf(true) }
-    var errorMessage    by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        try {
-            eventList      = RetrofitClient.instance.getEvents()
-            isLoadingEvents = false
-        } catch (e: Exception) {
-            isLoadingEvents = false
-            errorMessage    = "Gagal memuat jadwal: ${e.message}"
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        try {
-            taskList       = RetrofitClient.instance.getTasks()
-            isLoadingTasks  = false
-        } catch (e: Exception) {
-            isLoadingTasks = false
-            errorMessage   = "Gagal memuat task: ${e.message}"
-        }
-    }
-
+    var currentTab    by remember { mutableStateOf(AppTab.SCHEDULE) }
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
     var showAddTask   by remember { mutableStateOf(false) }
     var showAddEvent  by remember { mutableStateOf(false) }
 
     val bottomSheetState  = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(errorMessage) {
-        errorMessage?.let {
-            snackbarHostState.showSnackbar(
-                message  = it,
-                duration = SnackbarDuration.Long
-            )
-            errorMessage = null
-        }
-    }
 
     if (selectedEvent != null) {
         DetailScreen(
@@ -137,18 +101,7 @@ fun AppRoot() {
         AddTaskScreen(
             onBack = { showAddTask = false },
             onTaskSaved = { title, description, category, priority, deadline, createdAt ->
-                val newId = (taskList.maxOfOrNull { it.id } ?: 0) + 1
-                val newTask = Task(
-                    id          = newId,
-                    title       = title,
-                    description = description,
-                    category    = category,
-                    priority    = priority,
-                    deadline    = deadline,
-                    isDone      = false,
-                    createdAt   = createdAt
-                )
-                taskList    = taskList + newTask
+                viewModel.addTask(title, description, category, priority, deadline, createdAt)
                 showAddTask = false
             }
         )
@@ -177,27 +130,43 @@ fun AppRoot() {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentTab) {
-                AppTab.SCHEDULE -> {
-                    if (isLoadingEvents) {
+
+                AppTab.SCHEDULE -> when (val state = eventState) {
+                    is UiState.Loading ->
                         FullScreenLoading(message = "Memuat jadwal…")
-                    } else {
+
+                    is UiState.Success ->
                         ScheduleScreen(
-                            events       = eventList,
+                            events       = state.data,
                             onEventClick = { event -> selectedEvent = event },
                             onAddEvent   = { showAddEvent = true }
                         )
-                    }
+
+                    is UiState.Error ->
+                        FullScreenError(
+                            message = state.message,
+                            onRetry = { viewModel.fetchEvents() }
+                        )
                 }
-                AppTab.TASKS -> {
-                    if (isLoadingTasks) {
+
+                AppTab.TASKS -> when (val state = taskState) {
+                    is UiState.Loading ->
                         FullScreenLoading(message = "Memuat task…")
-                    } else {
+
+                    is UiState.Success ->
                         TaskListScreen(
-                            tasks          = taskList,
-                            onTasksChanged = { updatedList -> taskList = updatedList },
+                            tasks          = state.data,
+                            onTasksChanged = { updatedList ->
+                                viewModel.updateTaskList(updatedList)
+                            },
                             onAddTask      = { showAddTask = true }
                         )
-                    }
+
+                    is UiState.Error ->
+                        FullScreenError(
+                            message = state.message,
+                            onRetry = { viewModel.fetchTasks() }
+                        )
                 }
             }
         }
@@ -215,20 +184,7 @@ fun AppRoot() {
                 snackbarHostState = snackbarHostState,
                 onDismiss         = { showAddEvent = false },
                 onEventSaved      = { title, date, startTime, endTime, category, color, description ->
-                    val durationMinutes = computeDurationMinutes(startTime, endTime)
-                    val newId = (eventList.maxOfOrNull { it.id } ?: 0) + 1
-                    val newEvent = Event(
-                        id              = newId,
-                        title           = title,
-                        description     = description,
-                        date            = date,
-                        startTime       = startTime,
-                        endTime         = endTime,
-                        durationMinutes = durationMinutes,
-                        category        = category,
-                        color           = color
-                    )
-                    eventList    = eventList + newEvent
+                    viewModel.addEvent(title, date, startTime, endTime, category, color, description)
                     showAddEvent = false
                 }
             )
@@ -263,13 +219,69 @@ fun FullScreenLoading(message: String = "Memuat data…") {
     }
 }
 
-private fun computeDurationMinutes(start: String, end: String): Int {
-    return try {
-        val (sh, sm) = start.split(":").map { it.toInt() }
-        val (eh, em) = end.split(":").map { it.toInt() }
-        val diff = (eh * 60 + em) - (sh * 60 + sm)
-        diff.coerceAtLeast(0)
-    } catch (e: Exception) { 0 }
+@Composable
+fun FullScreenError(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier         = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF1F5F9)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier            = Modifier.padding(horizontal = 32.dp)
+        ) {
+            Box(
+                modifier         = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFEE2E2)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.WifiOff,
+                    contentDescription = "Error",
+                    tint               = Color(0xFFEF4444),
+                    modifier           = Modifier.size(36.dp)
+                )
+            }
+            Text(
+                text       = "Oops! Terjadi Kesalahan",
+                fontSize   = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color      = Color(0xFF1E293B)
+            )
+            Text(
+                text       = message,
+                fontSize   = 13.sp,
+                color      = Color(0xFF64748B),
+                textAlign  = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Button(
+                onClick = onRetry,
+                shape   = RoundedCornerShape(12.dp),
+                colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5))
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Refresh,
+                    contentDescription = "Coba Lagi",
+                    modifier           = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text       = "Coba Lagi",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize   = 14.sp
+                )
+            }
+        }
+    }
 }
 
 data class NavItem(
@@ -291,7 +303,7 @@ fun AppBottomNavBar(
     NavigationBar(
         containerColor = Color.White,
         tonalElevation = 0.dp,
-        modifier = Modifier
+        modifier       = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
@@ -367,8 +379,8 @@ fun DetailScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color    = Color.White,
-                            modifier = Modifier.size(36.dp),
+                            color       = Color.White,
+                            modifier    = Modifier.size(36.dp),
                             strokeWidth = 3.dp
                         )
                     }
@@ -402,7 +414,6 @@ fun DetailScreen(
                         )
                     )
             )
-
             Box(
                 modifier         = Modifier
                     .align(Alignment.BottomCenter)
@@ -470,13 +481,13 @@ fun DetailScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            DetailInfoRow(Icons.Default.DateRange,  "Tanggal",  formatDate(event.date))
+            DetailInfoRow(Icons.Default.DateRange, "Tanggal",  formatDate(event.date))
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(Icons.Default.Schedule,   "Waktu",    "${event.startTime} – ${event.endTime}")
+            DetailInfoRow(Icons.Default.Schedule,  "Waktu",    "${event.startTime} – ${event.endTime}")
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(Icons.Default.Timer,      "Durasi",   formatDuration(event.durationMinutes))
+            DetailInfoRow(Icons.Default.Timer,     "Durasi",   formatDuration(event.durationMinutes))
             Divider(modifier = Modifier.padding(vertical = 10.dp), color = Color(0xFFE2E8F0))
-            DetailInfoRow(categoryIcon,             "Kategori", event.category)
+            DetailInfoRow(categoryIcon,            "Kategori", event.category)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -561,33 +572,6 @@ fun DetailInfoRow(icon: ImageVector, label: String, value: String) {
             Text(text = label, fontSize = 11.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Medium)
             Text(text = value, fontSize = 14.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
         }
-    }
-}
-
-@Composable
-fun EmptyStateView(modifier: Modifier = Modifier) {
-    Column(
-        modifier               = modifier,
-        verticalArrangement    = Arrangement.Center,
-        horizontalAlignment    = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier         = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFEEF2FF)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector        = Icons.Default.CalendarMonth,
-                contentDescription = "Belum ada jadwal",
-                tint               = Color(0xFF4F46E5),
-                modifier           = Modifier.size(40.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text = "Belum ada jadwal", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF94A3B8))
-        Text(text = "Tambahkan kegiatan pertama kamu!", fontSize = 13.sp, color = Color(0xFFCBD5E1))
     }
 }
 

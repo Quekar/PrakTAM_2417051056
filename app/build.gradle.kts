@@ -60,4 +60,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx.v2100)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 }
