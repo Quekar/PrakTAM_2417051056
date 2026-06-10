@@ -31,6 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.example.praktam_2417051056.getCategoryIcon
 import com.example.praktam_2417051056.model.Event
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 
 data class DayItem(
     val date: String,       // Format: YYYY-MM-DD
@@ -38,15 +42,23 @@ data class DayItem(
     val dayNumber: Int
 )
 
-val weekDays = listOf(
-    DayItem("2026-03-09", "Sen", 9),
-    DayItem("2026-03-10", "Sel", 10),
-    DayItem("2026-03-11", "Rab", 11),
-    DayItem("2026-03-12", "Kam", 12),
-    DayItem("2026-03-13", "Jum", 13),
-    DayItem("2026-03-14", "Sab", 14),
-    DayItem("2026-03-15", "Min", 15),
-)
+private val dayNames = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min")
+
+fun generateWeekDays(weekOffset: Int): List<DayItem> {
+    val today     = LocalDate.now()
+    val monday    = today
+        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        .plusWeeks(weekOffset.toLong())
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    return (0..6).map { i ->
+        val date = monday.plusDays(i.toLong())
+        DayItem(
+            date      = date.format(formatter),
+            dayName   = dayNames[i],
+            dayNumber = date.dayOfMonth
+        )
+    }
+}
 
 @Composable
 fun ScheduleScreen(
@@ -55,11 +67,38 @@ fun ScheduleScreen(
     onAddEvent: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var selectedDate by remember { mutableStateOf("2026-03-11") }
+    val today        = remember { LocalDate.now() }
+    val formatter    = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd") }
+
+    var weekOffset   by remember { mutableStateOf(0) }
+    var selectedDate by remember { mutableStateOf(today.format(formatter)) }
+
+    val currentWeekDays by remember(weekOffset) {
+        derivedStateOf { generateWeekDays(weekOffset) }
+    }
+
+    LaunchedEffect(weekOffset) {
+        val weekDates = currentWeekDays.map { it.date }
+        if (selectedDate !in weekDates) {
+            selectedDate = weekDates.first()
+        }
+    }
 
     val filteredEvents by remember(selectedDate, events) {
         derivedStateOf {
             events.filter { it.date == selectedDate }.sortedBy { it.startTime }
+        }
+    }
+
+    val monthLabel by remember(currentWeekDays) {
+        derivedStateOf {
+            val first = LocalDate.parse(currentWeekDays.first().date)
+            val last  = LocalDate.parse(currentWeekDays.last().date)
+            if (first.month == last.month) {
+                "${monthName(first.monthValue)} ${first.year}"
+            } else {
+                "${monthNameShort(first.monthValue)} – ${monthNameShort(last.monthValue)} ${last.year}"
+            }
         }
     }
 
@@ -118,7 +157,7 @@ fun ScheduleScreen(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
-                            onClick = { /* TODO: prev week */ },
+                            onClick = { weekOffset-- },
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(10.dp))
@@ -132,7 +171,7 @@ fun ScheduleScreen(
                             )
                         }
                         IconButton(
-                            onClick = { /* TODO: next week */ },
+                            onClick = { weekOffset++ },
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(10.dp))
@@ -151,7 +190,7 @@ fun ScheduleScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Maret 2026",
+                    text = monthLabel,
                     color = Color.White.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
@@ -163,7 +202,7 @@ fun ScheduleScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(weekDays) { day ->
+                    items(currentWeekDays) { day ->
                         val isSelected = selectedDate == day.date
                         val hasEvent = events.any { it.date == day.date }
 
@@ -465,25 +504,32 @@ fun formatDurationSchedule(minutes: Int): String = when {
 }
 
 fun formatFullDate(date: String): String {
-    val parts = date.split("-")
-    if (parts.size != 3) return date
-    val dayOfWeek = when (date) {
-        "2026-03-09" -> "Senin"
-        "2026-03-10" -> "Selasa"
-        "2026-03-11" -> "Rabu"
-        "2026-03-12" -> "Kamis"
-        "2026-03-13" -> "Jumat"
-        "2026-03-14" -> "Sabtu"
-        "2026-03-15" -> "Minggu"
-        else         -> ""
-    }
-    val day = parts[2].toIntOrNull() ?: return date
-    val month = when (parts[1]) {
-        "01" -> "Januari";  "02" -> "Februari"; "03" -> "Maret"
-        "04" -> "April";    "05" -> "Mei";       "06" -> "Juni"
-        "07" -> "Juli";     "08" -> "Agustus";   "09" -> "September"
-        "10" -> "Oktober";  "11" -> "November";  "12" -> "Desember"
-        else -> parts[1]
-    }
-    return "$dayOfWeek, $day $month ${parts[0]}"
+    return try {
+        val localDate  = LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val dayOfWeek  = when (localDate.dayOfWeek) {
+            DayOfWeek.MONDAY    -> "Senin"
+            DayOfWeek.TUESDAY   -> "Selasa"
+            DayOfWeek.WEDNESDAY -> "Rabu"
+            DayOfWeek.THURSDAY  -> "Kamis"
+            DayOfWeek.FRIDAY    -> "Jumat"
+            DayOfWeek.SATURDAY  -> "Sabtu"
+            DayOfWeek.SUNDAY    -> "Minggu"
+        }
+        "$dayOfWeek, ${localDate.dayOfMonth} ${monthName(localDate.monthValue)} ${localDate.year}"
+    } catch (e: Exception) { date }
+}
+
+fun monthName(month: Int): String = when (month) {
+    1  -> "Januari";  2  -> "Februari"; 3  -> "Maret"
+    4  -> "April";    5  -> "Mei";       6  -> "Juni"
+    7  -> "Juli";     8  -> "Agustus";   9  -> "September"
+    10 -> "Oktober";  11 -> "November";  12 -> "Desember"
+    else -> "$month"
+}
+
+fun monthNameShort(month: Int): String = when (month) {
+    1  -> "Jan"; 2  -> "Feb"; 3  -> "Mar"; 4  -> "Apr"
+    5  -> "Mei"; 6  -> "Jun"; 7  -> "Jul"; 8  -> "Agu"
+    9  -> "Sep"; 10 -> "Okt"; 11 -> "Nov"; 12 -> "Des"
+    else -> "$month"
 }

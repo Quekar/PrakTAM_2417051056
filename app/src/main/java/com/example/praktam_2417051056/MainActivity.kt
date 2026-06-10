@@ -37,10 +37,14 @@ import androidx.core.graphics.toColorInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
 import com.example.praktam_2417051056.addevent.AddEventBottomSheet
+import com.example.praktam_2417051056.addevent.EditEventBottomSheet
 import com.example.praktam_2417051056.addtask.AddTaskScreen
+import com.example.praktam_2417051056.addtask.EditTaskScreen
 import com.example.praktam_2417051056.model.Event
+import com.example.praktam_2417051056.model.Task
 import com.example.praktam_2417051056.schedule.ScheduleScreen
 import com.example.praktam_2417051056.splash.SplashScreen
+import com.example.praktam_2417051056.taskdetail.DetailTaskScreen
 import com.example.praktam_2417051056.tasklist.TaskListScreen
 import com.example.praktam_2417051056.ui.theme.PrakTAM_2417051056Theme
 import com.example.praktam_2417051056.viewmodel.AppViewModel
@@ -83,16 +87,55 @@ fun AppRoot(
 
     var currentTab    by remember { mutableStateOf(AppTab.SCHEDULE) }
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
+    var selectedTask  by remember { mutableStateOf<Task?>(null) }
     var showAddTask   by remember { mutableStateOf(false) }
     var showAddEvent  by remember { mutableStateOf(false) }
+    var editingEvent  by remember { mutableStateOf<Event?>(null) }
+    var editingTask   by remember { mutableStateOf<Task?>(null) }
 
     val bottomSheetState  = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val snackbarHostState = remember { SnackbarHostState() }
 
     if (selectedEvent != null) {
         DetailScreen(
-            event  = selectedEvent!!,
-            onBack = { selectedEvent = null }
+            event    = selectedEvent!!,
+            onBack   = { selectedEvent = null },
+            onDelete = { event ->
+                viewModel.deleteEvent(event.id)
+                selectedEvent = null
+            },
+            onEdit   = { event ->
+                editingEvent  = event
+                selectedEvent = null
+            }
+        )
+        return
+    }
+
+    if (selectedTask != null) {
+        DetailTaskScreen(
+            task     = selectedTask!!,
+            onBack   = { selectedTask = null },
+            onDelete = { task ->
+                viewModel.deleteTask(task.id)
+                selectedTask = null
+            },
+            onEdit   = { task ->
+                editingTask  = task
+                selectedTask = null
+            }
+        )
+        return
+    }
+
+    if (editingTask != null) {
+        EditTaskScreen(
+            task = editingTask!!,
+            onBack = { editingTask = null },
+            onTaskUpdated = { title, description, category, priority, deadline ->
+                viewModel.editTask(editingTask!!.id, title, description, category, priority, deadline)
+                editingTask = null
+            }
         )
         return
     }
@@ -159,6 +202,7 @@ fun AppRoot(
                             onTasksChanged = { updatedList ->
                                 viewModel.updateTaskList(updatedList)
                             },
+                            onTaskClick    = { task -> selectedTask = task },
                             onAddTask      = { showAddTask = true }
                         )
 
@@ -186,6 +230,26 @@ fun AppRoot(
                 onEventSaved      = { title, date, startTime, endTime, category, color, description ->
                     viewModel.addEvent(title, date, startTime, endTime, category, color, description)
                     showAddEvent = false
+                }
+            )
+        }
+    }
+
+    if (editingEvent != null) {
+        ModalBottomSheet(
+            onDismissRequest = { editingEvent = null },
+            sheetState       = bottomSheetState,
+            containerColor   = Color.White,
+            dragHandle       = null,
+            shape            = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            EditEventBottomSheet(
+                event             = editingEvent!!,
+                snackbarHostState = snackbarHostState,
+                onDismiss         = { editingEvent = null },
+                onEventUpdated    = { title, date, startTime, endTime, category, color, description ->
+                    viewModel.editEvent(editingEvent!!.id, title, date, startTime, endTime, category, color, description)
+                    editingEvent = null
                 }
             )
         }
@@ -346,6 +410,8 @@ fun AppBottomNavBar(
 fun DetailScreen(
     event: Event,
     onBack: () -> Unit,
+    onDelete: (Event) -> Unit = {},
+    onEdit: (Event) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val eventColor   = parseColor(event.color)
@@ -524,7 +590,7 @@ fun DetailScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
-                onClick  = { /* TODO: Edit Event */ },
+                onClick  = { onEdit(event) },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4F46E5))
@@ -534,7 +600,7 @@ fun DetailScreen(
                 Text(text = "Edit", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             Button(
-                onClick  = { onBack() },
+                onClick  = { onDelete(event) },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))

@@ -115,6 +115,71 @@ class AppViewModel(
         _taskState.value = UiState.Success(current + newTask)
     }
 
+    fun deleteEvent(id: Int) {
+        val current = (_eventState.value as? UiState.Success)?.data ?: return
+        _eventState.value = UiState.Success(current.filter { it.id != id })
+    }
+
+    fun editEvent(
+        id: Int,
+        title: String,
+        date: String,
+        startTime: String,
+        endTime: String,
+        category: String,
+        color: String,
+        description: String
+    ) {
+        val current = (_eventState.value as? UiState.Success)?.data ?: return
+        val durationMinutes = try {
+            val (sh, sm) = startTime.split(":").map { it.toInt() }
+            val (eh, em) = endTime.split(":").map { it.toInt() }
+            ((eh * 60 + em) - (sh * 60 + sm)).coerceAtLeast(0)
+        } catch (e: Exception) { 0 }
+
+        _eventState.value = UiState.Success(
+            current.map { event ->
+                if (event.id == id) event.copy(
+                    title           = title,
+                    date            = date,
+                    startTime       = startTime,
+                    endTime         = endTime,
+                    durationMinutes = durationMinutes,
+                    category        = category,
+                    color           = color,
+                    description     = description
+                ) else event
+            }
+        )
+    }
+
+    fun deleteTask(id: Int) {
+        val current = (_taskState.value as? UiState.Success)?.data ?: return
+        _taskState.value = UiState.Success(current.filter { it.id != id })
+    }
+
+    fun editTask(
+        id: Int,
+        title: String,
+        description: String,
+        category: String,
+        priority: Int,
+        deadline: String
+    ) {
+        val current = (_taskState.value as? UiState.Success)?.data ?: return
+        _taskState.value = UiState.Success(
+            current.map { task ->
+                if (task.id == id) task.copy(
+                    title       = title,
+                    description = description,
+                    category    = category,
+                    priority    = priority,
+                    deadline    = deadline
+                ) else task
+            }
+        )
+    }
+
     fun updateTaskList(updatedList: List<Task>) {
         _taskState.value = UiState.Success(updatedList)
     }

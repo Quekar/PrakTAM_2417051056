@@ -577,5 +577,12 @@ fun formatDeadlineShort(deadline: String): String {
 
 fun isOverdue(task: Task): Boolean {
     if (task.isDone) return false
-    return task.deadline < "2026-03-17 23:59"
+    if (task.deadline == "-") return false
+    return try {
+        val now = java.time.LocalDateTime.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        task.deadline < now
+    } catch (e: Exception) {
+        false
+    }
 }
