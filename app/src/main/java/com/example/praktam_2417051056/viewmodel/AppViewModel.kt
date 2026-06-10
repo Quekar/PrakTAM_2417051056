@@ -1,7 +1,9 @@
 package com.example.praktam_2417051056.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.praktam_2417051056.local.LocalDataStore
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.Task
 import com.example.praktam_2417051056.repository.EventRepository
@@ -17,10 +19,11 @@ sealed class UiState<out T> {
     data class Error(val message: String) : UiState<Nothing>()
 }
 
-class AppViewModel(
-    private val eventRepository: EventRepository = EventRepository(),
-    private val taskRepository: TaskRepository   = TaskRepository()
-) : ViewModel() {
+class AppViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val store           = LocalDataStore(application)
+    private val eventRepository = EventRepository(store)
+    private val taskRepository  = TaskRepository(store)
 
     private val _eventState = MutableStateFlow<UiState<List<Event>>>(UiState.Loading)
     val eventState: StateFlow<UiState<List<Event>>> = _eventState.asStateFlow()
@@ -37,12 +40,16 @@ class AppViewModel(
         viewModelScope.launch {
             _eventState.value = UiState.Loading
             try {
-                val data = eventRepository.getEvents()
-                _eventState.value = UiState.Success(data)
+                eventRepository.seedFromApiIfEmpty()
+                _eventState.value = UiState.Success(eventRepository.getEvents())
             } catch (e: Exception) {
-                _eventState.value = UiState.Error(
-                    "Gagal memuat jadwal. Periksa koneksi internet kamu."
-                )
+                try {
+                    _eventState.value = UiState.Success(eventRepository.getEvents())
+                } catch (e2: Exception) {
+                    _eventState.value = UiState.Error(
+                        "Gagal memuat jadwal. Periksa koneksi internet kamu."
+                    )
+                }
             }
         }
     }
@@ -51,136 +58,114 @@ class AppViewModel(
         viewModelScope.launch {
             _taskState.value = UiState.Loading
             try {
-                val data = taskRepository.getTasks()
-                _taskState.value = UiState.Success(data)
+                taskRepository.seedFromApiIfEmpty()
+                _taskState.value = UiState.Success(taskRepository.getTasks())
             } catch (e: Exception) {
-                _taskState.value = UiState.Error(
-                    "Gagal memuat task. Periksa koneksi internet kamu."
-                )
+                try {
+                    _taskState.value = UiState.Success(taskRepository.getTasks())
+                } catch (e2: Exception) {
+                    _taskState.value = UiState.Error(
+                        "Gagal memuat task. Periksa koneksi internet kamu."
+                    )
+                }
             }
         }
     }
 
     fun addEvent(
-        title: String,
-        date: String,
-        startTime: String,
-        endTime: String,
-        category: String,
-        color: String,
-        description: String
+        title: String, date: String, startTime: String, endTime: String,
+        category: String, color: String, description: String
     ) {
-        val current = (_eventState.value as? UiState.Success)?.data ?: return
-        val newId   = (current.maxOfOrNull { it.id } ?: 0) + 1
-        val durationMinutes = try {
-            val (sh, sm) = startTime.split(":").map { it.toInt() }
-            val (eh, em) = endTime.split(":").map { it.toInt() }
-            ((eh * 60 + em) - (sh * 60 + sm)).coerceAtLeast(0)
-        } catch (e: Exception) { 0 }
-
-        val newEvent = Event(
-            id              = newId,
-            title           = title,
-            description     = description,
-            date            = date,
-            startTime       = startTime,
-            endTime         = endTime,
-            durationMinutes = durationMinutes,
-            category        = category,
-            color           = color
-        )
-        _eventState.value = UiState.Success(current + newEvent)
-    }
-
-    fun addTask(
-        title: String,
-        description: String,
-        category: String,
-        priority: Int,
-        deadline: String,
-        createdAt: String
-    ) {
-        val current = (_taskState.value as? UiState.Success)?.data ?: return
-        val newId   = (current.maxOfOrNull { it.id } ?: 0) + 1
-        val newTask = Task(
-            id          = newId,
-            title       = title,
-            description = description,
-            category    = category,
-            priority    = priority,
-            deadline    = deadline,
-            isDone      = false,
-            createdAt   = createdAt
-        )
-        _taskState.value = UiState.Success(current + newTask)
+        viewModelScope.launch {
+            val durationMinutes = calcDuration(startTime, endTime)
+            val newEvent = Event(
+                id = 0, title = title, description = description,
+                date = date, startTime = startTime, endTime = endTime,
+                durationMinutes = durationMinutes, category = category, color = color
+            )
+            eventRepository.addEvent(newEvent)
+            _eventState.value = UiState.Success(eventRepository.getEvents())
+        }
     }
 
     fun deleteEvent(id: Int) {
-        val current = (_eventState.value as? UiState.Success)?.data ?: return
-        _eventState.value = UiState.Success(current.filter { it.id != id })
+        viewModelScope.launch {
+            eventRepository.deleteEvent(id)
+            _eventState.value = UiState.Success(eventRepository.getEvents())
+        }
     }
 
     fun editEvent(
-        id: Int,
-        title: String,
-        date: String,
-        startTime: String,
-        endTime: String,
-        category: String,
-        color: String,
-        description: String
+        id: Int, title: String, date: String, startTime: String, endTime: String,
+        category: String, color: String, description: String
     ) {
-        val current = (_eventState.value as? UiState.Success)?.data ?: return
-        val durationMinutes = try {
+        viewModelScope.launch {
+            val durationMinutes = calcDuration(startTime, endTime)
+            val updated = Event(
+                id = id, title = title, description = description,
+                date = date, startTime = startTime, endTime = endTime,
+                durationMinutes = durationMinutes, category = category, color = color
+            )
+            eventRepository.updateEvent(updated)
+            _eventState.value = UiState.Success(eventRepository.getEvents())
+        }
+    }
+
+    fun addTask(
+        title: String, description: String, category: String,
+        priority: Int, deadline: String, createdAt: String
+    ) {
+        viewModelScope.launch {
+            val newTask = Task(
+                id = 0, title = title, description = description,
+                category = category, priority = priority,
+                deadline = deadline, isDone = false, createdAt = createdAt
+            )
+            taskRepository.addTask(newTask)
+            _taskState.value = UiState.Success(taskRepository.getTasks())
+        }
+    }
+
+    fun deleteTask(id: Int) {
+        viewModelScope.launch {
+            taskRepository.deleteTask(id)
+            _taskState.value = UiState.Success(taskRepository.getTasks())
+        }
+    }
+
+    fun editTask(
+        id: Int, title: String, description: String,
+        category: String, priority: Int, deadline: String
+    ) {
+        viewModelScope.launch {
+            val current = taskRepository.getTasks().find { it.id == id } ?: return@launch
+            val updated = current.copy(
+                title = title, description = description,
+                category = category, priority = priority, deadline = deadline
+            )
+            taskRepository.updateTask(updated)
+            _taskState.value = UiState.Success(taskRepository.getTasks())
+        }
+    }
+
+    fun updateTaskList(updatedList: List<Task>) {
+        viewModelScope.launch {
+            val current = (_taskState.value as? UiState.Success)?.data ?: return@launch
+            updatedList.forEach { updated ->
+                val original = current.find { it.id == updated.id }
+                if (original?.isDone != updated.isDone) {
+                    taskRepository.updateTask(updated)
+                }
+            }
+            _taskState.value = UiState.Success(taskRepository.getTasks())
+        }
+    }
+
+    private fun calcDuration(startTime: String, endTime: String): Int {
+        return try {
             val (sh, sm) = startTime.split(":").map { it.toInt() }
             val (eh, em) = endTime.split(":").map { it.toInt() }
             ((eh * 60 + em) - (sh * 60 + sm)).coerceAtLeast(0)
         } catch (e: Exception) { 0 }
-
-        _eventState.value = UiState.Success(
-            current.map { event ->
-                if (event.id == id) event.copy(
-                    title           = title,
-                    date            = date,
-                    startTime       = startTime,
-                    endTime         = endTime,
-                    durationMinutes = durationMinutes,
-                    category        = category,
-                    color           = color,
-                    description     = description
-                ) else event
-            }
-        )
-    }
-
-    fun deleteTask(id: Int) {
-        val current = (_taskState.value as? UiState.Success)?.data ?: return
-        _taskState.value = UiState.Success(current.filter { it.id != id })
-    }
-
-    fun editTask(
-        id: Int,
-        title: String,
-        description: String,
-        category: String,
-        priority: Int,
-        deadline: String
-    ) {
-        val current = (_taskState.value as? UiState.Success)?.data ?: return
-        _taskState.value = UiState.Success(
-            current.map { task ->
-                if (task.id == id) task.copy(
-                    title       = title,
-                    description = description,
-                    category    = category,
-                    priority    = priority,
-                    deadline    = deadline
-                ) else task
-            }
-        )
-    }
-
-    fun updateTaskList(updatedList: List<Task>) {
-        _taskState.value = UiState.Success(updatedList)
     }
 }

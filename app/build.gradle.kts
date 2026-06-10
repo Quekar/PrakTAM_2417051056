@@ -1,15 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("org.jetbrains.kotlin.android")
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.example.praktam_2417051056"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.praktam_2417051056"
@@ -34,6 +31,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlin {
+        jvmToolchain(11)
+    }
     buildFeatures {
         compose = true
     }
@@ -57,10 +57,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.core:core-ktx:1.13.1")
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx.v2100)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
