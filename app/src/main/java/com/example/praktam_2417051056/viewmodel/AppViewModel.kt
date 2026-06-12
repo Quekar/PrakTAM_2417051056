@@ -84,14 +84,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addEvent(
         title: String, date: String, startTime: String, endTime: String,
-        category: String, color: String, description: String
+        category: String, color: String, description: String, isRepeating: Boolean = false
     ) {
         viewModelScope.launch {
             val durationMinutes = calcDuration(startTime, endTime)
             val newEvent = Event(
                 id = 0, title = title, description = description,
                 date = date, startTime = startTime, endTime = endTime,
-                durationMinutes = durationMinutes, category = category, color = color
+                durationMinutes = durationMinutes, category = category, color = color,
+                isRepeating = isRepeating
             )
             eventRepository.addEvent(newEvent)
             val events = eventRepository.getEvents()
@@ -112,14 +113,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun editEvent(
         id: Int, title: String, date: String, startTime: String, endTime: String,
-        category: String, color: String, description: String
+        category: String, color: String, description: String, isRepeating: Boolean = false
     ) {
         viewModelScope.launch {
             val durationMinutes = calcDuration(startTime, endTime)
             val updated = Event(
                 id = id, title = title, description = description,
                 date = date, startTime = startTime, endTime = endTime,
-                durationMinutes = durationMinutes, category = category, color = color
+                durationMinutes = durationMinutes, category = category, color = color,
+                isRepeating = isRepeating
             )
             eventRepository.updateEvent(updated)
             _eventState.value = UiState.Success(eventRepository.getEvents())

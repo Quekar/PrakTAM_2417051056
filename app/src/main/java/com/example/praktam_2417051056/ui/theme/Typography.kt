@@ -7,20 +7,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val DailyDoFontFamily = FontFamily.Default   // Ganti ke custom font jika tersedia
+val DailyDoFontFamily = FontFamily.Default
 
 val DailyDoTypography = Typography(
 
     displayLarge = TextStyle(
         fontFamily = DailyDoFontFamily,
-        fontWeight = FontWeight.ExtraBold,   // 800
+        fontWeight = FontWeight.ExtraBold,
         fontSize   = 40.sp,
         lineHeight = 48.sp,
         letterSpacing = (-1).sp
     ),
     displayMedium = TextStyle(
         fontFamily = DailyDoFontFamily,
-        fontWeight = FontWeight.Bold,        // 700
+        fontWeight = FontWeight.Bold,
         fontSize   = 32.sp,
         lineHeight = 40.sp,
         letterSpacing = (-0.5).sp

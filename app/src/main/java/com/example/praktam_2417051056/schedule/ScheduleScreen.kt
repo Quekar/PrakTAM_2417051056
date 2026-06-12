@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,6 +61,19 @@ fun generateWeekDays(weekOffset: Int): List<DayItem> {
     }
 }
 
+fun eventOccursOnDate(event: Event, targetDate: String): Boolean {
+    if (event.date == targetDate) return true
+    if (!event.isRepeating) return false
+
+    return try {
+        val original = LocalDate.parse(event.date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val target   = LocalDate.parse(targetDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        target.dayOfWeek == original.dayOfWeek && !target.isBefore(original)
+    } catch (e: Exception) {
+        false
+    }
+}
+
 @Composable
 fun ScheduleScreen(
     events: List<Event> = emptyList(),
@@ -86,7 +100,9 @@ fun ScheduleScreen(
 
     val filteredEvents by remember(selectedDate, events) {
         derivedStateOf {
-            events.filter { it.date == selectedDate }.sortedBy { it.startTime }
+            events
+                .filter { eventOccursOnDate(it, selectedDate) }
+                .sortedBy { it.startTime }
         }
     }
 
@@ -204,7 +220,7 @@ fun ScheduleScreen(
                 ) {
                     items(currentWeekDays) { day ->
                         val isSelected = selectedDate == day.date
-                        val hasEvent = events.any { it.date == day.date }
+                        val hasEvent = events.any { eventOccursOnDate(it, day.date) }
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -392,6 +408,31 @@ fun EventCard(event: Event, onClick: () -> Unit) {
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
+                        }
+                        if (event.isRepeating) {
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color(0xFFF1F5F9)
+                            ) {
+                                Row(
+                                    modifier              = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.Repeat,
+                                        contentDescription = "Berulang setiap minggu",
+                                        tint               = Color(0xFF64748B),
+                                        modifier           = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = "Mingguan",
+                                        color = Color(0xFF64748B),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
                         }
                     }
 

@@ -41,23 +41,25 @@ private val categoryOptions = listOf(
 @Composable
 fun AddEventBottomSheet(
     onDismiss: () -> Unit = {},
-    onEventSaved: (title: String, date: String, startTime: String, endTime: String,
-                   category: String, color: String, description: String) -> Unit = { _, _, _, _, _, _, _ -> },
+    onEventSaved: (
+        title: String, date: String, startTime: String, endTime: String,
+        category: String, color: String, description: String, isRepeating: Boolean
+    ) -> Unit = { _, _, _, _, _, _, _, _ -> },
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    var title       by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var date        by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) }
-    var startTime   by remember { mutableStateOf("08:00") }
-    var endTime     by remember { mutableStateOf("09:00") }
-    var selectedCat by remember { mutableStateOf(categoryOptions[0]) }
+    var title        by remember { mutableStateOf("") }
+    var description  by remember { mutableStateOf("") }
+    var date         by remember { mutableStateOf(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))) }
+    var startTime    by remember { mutableStateOf("08:00") }
+    var endTime      by remember { mutableStateOf("09:00") }
+    var selectedCat  by remember { mutableStateOf(categoryOptions[0]) }
+    var isRepeating  by remember { mutableStateOf(false) }
 
-    var isLoading   by remember { mutableStateOf(false) }
-
-    var titleError     by remember { mutableStateOf(false) }
-    var timeError      by remember { mutableStateOf(false) }
+    var isLoading    by remember { mutableStateOf(false) }
+    var titleError   by remember { mutableStateOf(false) }
+    var timeError    by remember { mutableStateOf(false) }
 
     val durationText by remember(startTime, endTime) {
         derivedStateOf { computeDuration(startTime, endTime) }
@@ -83,9 +85,10 @@ fun AddEventBottomSheet(
             delay(1800)
             isLoading = false
 
-            val durationMinutes = computeDurationMinutes(startTime, endTime)
-            onEventSaved(title.trim(), date, startTime, endTime,
-                selectedCat.name, selectedCat.hex, description.trim())
+            onEventSaved(
+                title.trim(), date, startTime, endTime,
+                selectedCat.name, selectedCat.hex, description.trim(), isRepeating
+            )
 
             snackbarHostState.showSnackbar(
                 message  = "✅  Kegiatan \"${title.trim()}\" berhasil ditambahkan!",
@@ -121,11 +124,11 @@ fun AddEventBottomSheet(
             exit    = fadeOut() + shrinkVertically()
         ) {
             LinearProgressIndicator(
-                progress            = { loadingProgress.value },
-                modifier            = Modifier.fillMaxWidth().height(3.dp),
-                color               = Color(0xFF4F46E5),
-                trackColor          = Color(0xFFE0E7FF),
-                strokeCap           = StrokeCap.Round
+                progress   = { loadingProgress.value },
+                modifier   = Modifier.fillMaxWidth().height(3.dp),
+                color      = Color(0xFF4F46E5),
+                trackColor = Color(0xFFE0E7FF),
+                strokeCap  = StrokeCap.Round
             )
         }
 
@@ -138,8 +141,8 @@ fun AddEventBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
-                modifier          = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
@@ -156,7 +159,7 @@ fun AddEventBottomSheet(
                     )
                 }
                 Box(
-                    modifier = Modifier
+                    modifier         = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
                         .background(Color(0xFFF1F5F9))
@@ -212,7 +215,6 @@ fun AddEventBottomSheet(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
             FormLabel(text = "Waktu", required = true)
             Spacer(modifier = Modifier.height(6.dp))
             Row(
@@ -221,9 +223,9 @@ fun AddEventBottomSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text     = "Mulai",
-                        fontSize = 11.sp,
-                        color    = Color(0xFF94A3B8),
+                        text       = "Mulai",
+                        fontSize   = 11.sp,
+                        color      = Color(0xFF94A3B8),
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -236,9 +238,9 @@ fun AddEventBottomSheet(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text     = "Selesai",
-                        fontSize = 11.sp,
-                        color    = Color(0xFF94A3B8),
+                        text       = "Selesai",
+                        fontSize   = 11.sp,
+                        color      = Color(0xFF94A3B8),
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -253,19 +255,17 @@ fun AddEventBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
             AnimatedContent(
-                targetState = durationText,
+                targetState    = durationText,
                 transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
-                label = "duration"
+                label          = "duration"
             ) { dur ->
                 val isError = dur.startsWith("⚠")
                 Row(
-                    modifier          = Modifier
+                    modifier              = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isError) Color(0xFFFEE2E2) else Color(0xFFEEF2FF)
-                        )
+                        .background(if (isError) Color(0xFFFEE2E2) else Color(0xFFEEF2FF))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(text = if (isError) "⚠️" else "⏱️", fontSize = 13.sp)
@@ -298,9 +298,9 @@ fun AddEventBottomSheet(
                                 else Color(0xFFF8FAFC)
                             )
                             .border(
-                                width  = if (isSelected) 1.5.dp else 1.dp,
-                                color  = if (isSelected) cat.color else Color(0xFFE2E8F0),
-                                shape  = RoundedCornerShape(12.dp)
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) cat.color else Color(0xFFE2E8F0),
+                                shape = RoundedCornerShape(12.dp)
                             )
                             .clickable(enabled = !isLoading) { selectedCat = cat }
                             .padding(vertical = 10.dp),
@@ -336,6 +336,79 @@ fun AddEventBottomSheet(
                 colors        = inputColors()
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (isRepeating) Color(0xFFEEF2FF) else Color(0xFFF8FAFC)
+                    )
+                    .border(
+                        width = if (isRepeating) 1.5.dp else 1.dp,
+                        color = if (isRepeating) Color(0xFF4F46E5) else Color(0xFFE2E8F0),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .clickable(enabled = !isLoading) { isRepeating = !isRepeating }
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier          = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier         = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isRepeating) Color(0xFF4F46E5).copy(alpha = 0.12f)
+                                else Color(0xFFE2E8F0).copy(alpha = 0.5f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Repeat,
+                            contentDescription = "Repeat",
+                            tint               = if (isRepeating) Color(0xFF4F46E5) else Color(0xFF94A3B8),
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text       = "Ulangi setiap minggu",
+                            fontSize   = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = if (isRepeating) Color(0xFF4F46E5) else Color(0xFF1E293B)
+                        )
+                        Text(
+                            text     = if (isRepeating)
+                                "Aktif — tampil di semua minggu pada hari yang sama"
+                            else
+                                "Nonaktif — hanya tampil pada tanggal ini",
+                            fontSize = 11.sp,
+                            color    = if (isRepeating) Color(0xFF6366F1) else Color(0xFF94A3B8),
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Checkbox(
+                        checked         = isRepeating,
+                        onCheckedChange = { if (!isLoading) isRepeating = it },
+                        enabled         = !isLoading,
+                        colors          = CheckboxDefaults.colors(
+                            checkedColor          = Color(0xFF4F46E5),
+                            uncheckedColor        = Color(0xFFCBD5E1),
+                            checkmarkColor        = Color.White
+                        )
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             Row(
@@ -348,7 +421,7 @@ fun AddEventBottomSheet(
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape    = RoundedCornerShape(14.dp),
                     colors   = ButtonDefaults.outlinedButtonColors(
-                        contentColor        = Color(0xFF64748B),
+                        contentColor         = Color(0xFF64748B),
                         disabledContentColor = Color(0xFFCBD5E1)
                     ),
                     border   = BorderStroke(
@@ -365,23 +438,23 @@ fun AddEventBottomSheet(
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape    = RoundedCornerShape(14.dp),
                     colors   = ButtonDefaults.buttonColors(
-                        containerColor        = Color(0xFF4F46E5),
+                        containerColor         = Color(0xFF4F46E5),
                         disabledContainerColor = Color(0xFF4F46E5).copy(alpha = 0.5f)
                     )
                 ) {
                     AnimatedContent(
-                        targetState = isLoading,
+                        targetState    = isLoading,
                         transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
-                        label = "btnContent"
+                        label          = "btnContent"
                     ) { loading ->
                         if (loading) {
                             Row(
-                                verticalAlignment      = Alignment.CenterVertically,
-                                horizontalArrangement  = Arrangement.spacedBy(8.dp)
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 CircularProgressIndicator(
-                                    modifier  = Modifier.size(18.dp),
-                                    color     = Color.White,
+                                    modifier    = Modifier.size(18.dp),
+                                    color       = Color.White,
                                     strokeWidth = 2.dp
                                 )
                                 Text(
@@ -420,30 +493,30 @@ fun AddEventBottomSheet(
 
     if (showDatePicker) {
         SimplePickerDialog(
-            title   = "Pilih Tanggal",
-            options = generateDateOptions(),
-            current = date,
-            onSelect = { date = it; showDatePicker = false },
+            title     = "Pilih Tanggal",
+            options   = generateDateOptions(),
+            current   = date,
+            onSelect  = { date = it; showDatePicker = false },
             onDismiss = { showDatePicker = false }
         )
     }
 
     if (showStartPicker) {
         SimplePickerDialog(
-            title   = "Jam Mulai",
-            options = generateTimeOptions(),
-            current = startTime,
-            onSelect = { startTime = it; showStartPicker = false },
+            title     = "Jam Mulai",
+            options   = generateTimeOptions(),
+            current   = startTime,
+            onSelect  = { startTime = it; showStartPicker = false },
             onDismiss = { showStartPicker = false }
         )
     }
 
     if (showEndPicker) {
         SimplePickerDialog(
-            title   = "Jam Selesai",
-            options = generateTimeOptions(),
-            current = endTime,
-            onSelect = { endTime = it; showEndPicker = false },
+            title     = "Jam Selesai",
+            options   = generateTimeOptions(),
+            current   = endTime,
+            onSelect  = { endTime = it; showEndPicker = false },
             onDismiss = { showEndPicker = false }
         )
     }
@@ -482,8 +555,8 @@ private fun PickerButton(
             .padding(horizontal = 14.dp, vertical = 13.dp)
     ) {
         Row(
-            verticalAlignment      = Alignment.CenterVertically,
-            horizontalArrangement  = Arrangement.spacedBy(10.dp)
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(text = icon, fontSize = 16.sp)
             Text(
@@ -498,11 +571,11 @@ private fun PickerButton(
 
 @Composable
 private fun inputColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor   = Color(0xFF4F46E5),
-    unfocusedBorderColor = Color(0xFFE2E8F0),
-    errorBorderColor     = Color(0xFFEF4444),
-    focusedLabelColor    = Color(0xFF4F46E5),
-    cursorColor          = Color(0xFF4F46E5),
+    focusedBorderColor      = Color(0xFF4F46E5),
+    unfocusedBorderColor    = Color(0xFFE2E8F0),
+    errorBorderColor        = Color(0xFFEF4444),
+    focusedLabelColor       = Color(0xFF4F46E5),
+    cursorColor             = Color(0xFF4F46E5),
     focusedContainerColor   = Color.White,
     unfocusedContainerColor = Color(0xFFF8FAFC),
     disabledContainerColor  = Color(0xFFF1F5F9),
@@ -535,13 +608,13 @@ private fun SimplePickerDialog(
                 options.forEach { opt ->
                     val isSelected = opt == current
                     Row(
-                        modifier          = Modifier
+                        modifier              = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (isSelected) Color(0xFFEEF2FF) else Color.Transparent)
                             .clickable { onSelect(opt) }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
@@ -572,14 +645,14 @@ private fun SimplePickerDialog(
 
 private fun computeDuration(start: String, end: String): String {
     return try {
-        val s = LocalTime.parse(start)
-        val e = LocalTime.parse(end)
+        val s    = LocalTime.parse(start)
+        val e    = LocalTime.parse(end)
         val diff = java.time.Duration.between(s, e).toMinutes()
         when {
-            diff <= 0          -> "⚠ invalid"
-            diff < 60          -> "$diff menit"
-            diff % 60 == 0L    -> "${diff / 60} jam"
-            else               -> "${diff / 60} jam ${diff % 60} mnt"
+            diff <= 0       -> "⚠ invalid"
+            diff < 60       -> "$diff menit"
+            diff % 60 == 0L -> "${diff / 60} jam"
+            else            -> "${diff / 60} jam ${diff % 60} mnt"
         }
     } catch (ex: Exception) { "–" }
 }

@@ -28,5 +28,8 @@ data class Event(
     val category: String,
 
     @SerializedName("color")
-    val color: String
+    val color: String,
+
+    @SerializedName("is_repeating")
+    val isRepeating: Boolean = false
 )

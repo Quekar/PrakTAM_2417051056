@@ -248,8 +248,8 @@ fun AppRoot(
             AddEventBottomSheet(
                 snackbarHostState = snackbarHostState,
                 onDismiss         = { showAddEvent = false },
-                onEventSaved      = { title, date, startTime, endTime, category, color, description ->
-                    viewModel.addEvent(title, date, startTime, endTime, category, color, description)
+                onEventSaved      = { title, date, startTime, endTime, category, color, description, isRepeating ->
+                    viewModel.addEvent(title, date, startTime, endTime, category, color, description, isRepeating)
                     showAddEvent = false
                 }
             )
@@ -268,8 +268,8 @@ fun AppRoot(
                 event             = editingEvent!!,
                 snackbarHostState = snackbarHostState,
                 onDismiss         = { editingEvent = null },
-                onEventUpdated    = { title, date, startTime, endTime, category, color, description ->
-                    viewModel.editEvent(editingEvent!!.id, title, date, startTime, endTime, category, color, description)
+                onEventUpdated    = { title, date, startTime, endTime, category, color, description, isRepeating ->
+                    viewModel.editEvent(editingEvent!!.id, title, date, startTime, endTime, category, color, description, isRepeating)
                     editingEvent = null
                 }
             )
