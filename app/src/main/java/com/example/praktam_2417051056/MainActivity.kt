@@ -1,9 +1,13 @@
 package com.example.praktam_2417051056
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
@@ -42,6 +47,7 @@ import com.example.praktam_2417051056.addtask.AddTaskScreen
 import com.example.praktam_2417051056.addtask.EditTaskScreen
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.Task
+import com.example.praktam_2417051056.notification.NotificationHelper
 import com.example.praktam_2417051056.schedule.ScheduleScreen
 import com.example.praktam_2417051056.splash.SplashScreen
 import com.example.praktam_2417051056.taskdetail.DetailTaskScreen
@@ -54,9 +60,24 @@ enum class Screen { SPLASH, MAIN }
 enum class AppTab { SCHEDULE, TASKS }
 
 class MainActivity : ComponentActivity() {
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        NotificationHelper.createChannel(this)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
             PrakTAM_2417051056Theme {
                 DailyDoApp()
@@ -417,6 +438,48 @@ fun DetailScreen(
     val eventColor   = parseColor(event.color)
     val imageUrl     = getCategoryImageUrl(event.category)
     val categoryIcon = getCategoryIcon(event.category)
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            shape            = RoundedCornerShape(20.dp),
+            containerColor   = Color.White,
+            title = {
+                Text(
+                    text       = "Hapus Kegiatan?",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 16.sp,
+                    color      = Color(0xFF1E293B)
+                )
+            },
+            text = {
+                Text(
+                    text       = "\"${event.title}\" akan dihapus secara permanen.",
+                    fontSize   = 14.sp,
+                    color      = Color(0xFF64748B),
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete(event)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape  = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Hapus", fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal", color = Color(0xFF64748B))
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -600,7 +663,7 @@ fun DetailScreen(
                 Text(text = "Edit", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             Button(
-                onClick  = { onDelete(event) },
+                onClick  = { showDeleteDialog = true },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))

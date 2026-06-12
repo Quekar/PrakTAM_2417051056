@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.praktam_2417051056.local.LocalDataStore
 import com.example.praktam_2417051056.model.Event
 import com.example.praktam_2417051056.model.Task
+import com.example.praktam_2417051056.notification.NotificationScheduler
 import com.example.praktam_2417051056.repository.EventRepository
 import com.example.praktam_2417051056.repository.TaskRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ sealed class UiState<out T> {
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val ctx             = application.applicationContext
     private val store           = LocalDataStore(application)
     private val eventRepository = EventRepository(store)
     private val taskRepository  = TaskRepository(store)
@@ -41,10 +43,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _eventState.value = UiState.Loading
             try {
                 eventRepository.seedFromApiIfEmpty()
-                _eventState.value = UiState.Success(eventRepository.getEvents())
+                val events = eventRepository.getEvents()
+                _eventState.value = UiState.Success(events)
+                NotificationScheduler.scheduleAllEvents(ctx, events)
             } catch (e: Exception) {
                 try {
-                    _eventState.value = UiState.Success(eventRepository.getEvents())
+                    val events = eventRepository.getEvents()
+                    _eventState.value = UiState.Success(events)
+                    NotificationScheduler.scheduleAllEvents(ctx, events)
                 } catch (e2: Exception) {
                     _eventState.value = UiState.Error(
                         "Gagal memuat jadwal. Periksa koneksi internet kamu."
@@ -59,10 +65,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _taskState.value = UiState.Loading
             try {
                 taskRepository.seedFromApiIfEmpty()
-                _taskState.value = UiState.Success(taskRepository.getTasks())
+                val tasks = taskRepository.getTasks()
+                _taskState.value = UiState.Success(tasks)
+                NotificationScheduler.scheduleAllTasks(ctx, tasks)
             } catch (e: Exception) {
                 try {
-                    _taskState.value = UiState.Success(taskRepository.getTasks())
+                    val tasks = taskRepository.getTasks()
+                    _taskState.value = UiState.Success(tasks)
+                    NotificationScheduler.scheduleAllTasks(ctx, tasks)
                 } catch (e2: Exception) {
                     _taskState.value = UiState.Error(
                         "Gagal memuat task. Periksa koneksi internet kamu."
@@ -84,12 +94,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 durationMinutes = durationMinutes, category = category, color = color
             )
             eventRepository.addEvent(newEvent)
-            _eventState.value = UiState.Success(eventRepository.getEvents())
+            val events = eventRepository.getEvents()
+            _eventState.value = UiState.Success(events)
+            events.maxByOrNull { it.id }?.let {
+                NotificationScheduler.scheduleEventReminders(ctx, it)
+            }
         }
     }
 
     fun deleteEvent(id: Int) {
         viewModelScope.launch {
+            NotificationScheduler.cancelEventReminders(ctx, id)
             eventRepository.deleteEvent(id)
             _eventState.value = UiState.Success(eventRepository.getEvents())
         }
@@ -108,6 +123,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             )
             eventRepository.updateEvent(updated)
             _eventState.value = UiState.Success(eventRepository.getEvents())
+            NotificationScheduler.scheduleEventReminders(ctx, updated)
         }
     }
 
@@ -122,12 +138,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 deadline = deadline, isDone = false, createdAt = createdAt
             )
             taskRepository.addTask(newTask)
-            _taskState.value = UiState.Success(taskRepository.getTasks())
+            val tasks = taskRepository.getTasks()
+            _taskState.value = UiState.Success(tasks)
+            tasks.maxByOrNull { it.id }?.let {
+                NotificationScheduler.scheduleTaskReminders(ctx, it)
+            }
         }
     }
 
     fun deleteTask(id: Int) {
         viewModelScope.launch {
+            NotificationScheduler.cancelTaskReminders(ctx, id)
             taskRepository.deleteTask(id)
             _taskState.value = UiState.Success(taskRepository.getTasks())
         }
@@ -145,6 +166,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             )
             taskRepository.updateTask(updated)
             _taskState.value = UiState.Success(taskRepository.getTasks())
+            NotificationScheduler.scheduleTaskReminders(ctx, updated)
         }
     }
 
@@ -155,6 +177,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val original = current.find { it.id == updated.id }
                 if (original?.isDone != updated.isDone) {
                     taskRepository.updateTask(updated)
+                    if (updated.isDone) {
+                        NotificationScheduler.cancelTaskReminders(ctx, updated.id)
+                    } else {
+                        NotificationScheduler.scheduleTaskReminders(ctx, updated)
+                    }
                 }
             }
             _taskState.value = UiState.Success(taskRepository.getTasks())
